@@ -1,25 +1,27 @@
-import { attr, api, parser } from '../api.js'
+import { api, parser } from '../api.js'
 import type { Controller } from '../types.d.js'
 
 export const getCalendar: Controller = async (_, res) => {
   try {
     const html = await parser(api.calendar)
     res.status(200).json(
-      html.querySelectorAll('.heromain .accordionItem').map(i => {
-        const day = i.querySelector('h1')?.text
+      html.querySelectorAll('section.day-col').map(section => {
+        const day = section.attributes['data-day'] || null
         return {
           day,
-          animes: i.querySelectorAll('.accordionItemContent .row .col-md-6').map(i => {
-            const no = i.querySelector('.serisdtls a h4')?.text.trim()
-            const tags = i.querySelectorAll('.serisdtls .seriesbtns a')
-            return {
-              id: attr(i, 'a', 'href').split('/').pop() || null,
-              title: i.querySelector('.serisdtls a h3')?.text.trim() || null,
-              image: attr(i, '.seriesimg a img') || null,
-              tags: tags.map(i => i.querySelector('button')?.text.trim() || null),
-              no: parseInt(no?.replace(/\w+\s/, '') as string) || null,
-            }
-          }),
+          animes: section.querySelectorAll('a.rel-card').map(i => {
+            const href = i.attributes['href'] || ''
+            const id = href.split('/anime/').pop() || null
+            const img = i.querySelector('img.rel-thumb-img')
+            const image = img?.attributes['data-src'] || img?.attributes['src'] || null
+            const title = i.querySelector('h3.rel-title')?.text?.trim() || null
+            const meta = i.querySelector('.font-mono.text-\\[10px\\]')?.text?.trim() || ''
+            const epMatch = meta.match(/Ep\.\s*(\d+)/)
+            const no = epMatch ? parseInt(epMatch[1]) : null
+            const typeParts = meta.split('·')
+            const type = typeParts.length > 2 ? typeParts[2].trim() : null
+            return { id, title, image, no, type }
+          })
         }
       })
     )
