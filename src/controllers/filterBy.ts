@@ -1,4 +1,4 @@
-import { api, attr, parser } from '../api.js'
+import { api, parser } from '../api.js'
 import type { Controller } from '../types.d.js'
 
 export const filterBy: Controller = async (req, res) => {
@@ -12,13 +12,19 @@ export const filterBy: Controller = async (req, res) => {
     }: { [key: string]: any } = req.query
     const html = await parser(api.filter({ categoria, fecha, genero, letra, pagina }))
     res.status(200).json(
-      html.querySelectorAll('.heromain .row .col-md-4.col-lg-2.col-6').map(i => {
-        return {
-          id: attr(i, 'a', 'href').split('/').pop() || null,
-          title: i.querySelector('.seristitles')?.text.trim() || null,
-          image: attr(i, '.animemainimg', 'src') || null,
-        }
-      })
+      html.querySelectorAll('article').map(i => {
+        const a = i.querySelector('a')
+        const href = a?.attributes['href'] || ''
+        const id = href.split('/anime/').pop() || null
+        if (!id || !href.includes('/anime/')) return null
+        const img = i.querySelector('img.card-img')
+        const image = img?.attributes['src'] !== 'https://monoschinos.st/img/anime.png'
+          ? img?.attributes['src']
+          : img?.attributes['data-src'] || null
+        const title = i.querySelector('h3')?.text?.trim() || null
+        const type = i.querySelector('.font-mono')?.text?.trim() || null
+        return { id, title, image, type }
+      }).filter(Boolean)
     )
   } catch (error) {
     res.status(500).json({ error })
