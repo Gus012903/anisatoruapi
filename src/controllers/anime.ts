@@ -1,4 +1,4 @@
-import { api, parser } from '../api.js'
+import { api, parser, headers } from '../api.js'
 import fetch from 'node-fetch'
 import type { Controller } from '../types.d.js'
 
@@ -19,12 +19,23 @@ export const getAnime: Controller = async (req, res) => {
     const tipo = dds[0]?.text?.trim() || null
     const date = dds[4]?.text?.trim() || null
 
+    // Extrae el token CSRF del HTML
+    const csrfToken = html.querySelector('meta[name="csrf-token"]')?.attributes['content'] || ''
+
     // ID del AJAX para episodios
     const ajaxUrl = html.querySelector('.caplist')?.attributes['data-ajax'] || null
     let episodes: { no: number, id: string }[] = []
 
     if (ajaxUrl) {
-      const ajaxRes  = await fetch(ajaxUrl)
+      const ajaxRes = await fetch(ajaxUrl, {
+        headers: {
+          ...headers,
+          'X-CSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+          'Referer': api.anime(id),
+        }
+      })
       const ajaxData: any = await ajaxRes.json()
       const animeSlug = id.replace('-sub-espanol', '')
       episodes = (ajaxData.eps || []).map((ep: { num: number }) => ({
