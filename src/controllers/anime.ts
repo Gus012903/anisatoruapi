@@ -1,35 +1,47 @@
-import { attr, api, parser } from '../api.js'
-import { Controller } from '../types.js'
+import { api, parser } from '../api.js'
+import fetch from 'node-fetch'
+import type { Controller } from '../types.d.js'
 
 export const getAnime: Controller = async (req, res) => {
   try {
-    const url = 'https://monoschinos2.com/'
     const { id } = req.params
     const html = await parser(api.anime(id))
-    const date = html.querySelectorAll('.breadcrumb')[1].querySelector('.breadcrumb-item')?.text
+
+    // Datos básicos del HTML
+    const title = html.querySelector('h1')?.text?.trim() || null
+    const image = html.querySelector('img.lazy')?.attributes['data-src'] || null
+    const sinopsis = html.querySelector('p.text-white\\/75')?.text?.trim() || null
+    const status = html.querySelector('.animate-pulse')?.parentNode?.parentNode?.text?.trim() || null
+    const genders = html.querySelectorAll('a[href*="/genero/"]').map(g => g.text?.trim()).filter(Boolean)
+
+    // Detalles de la tabla
+    const dds = html.querySelectorAll('dd.text-white.text-right')
+    const tipo = dds[0]?.text?.trim() || null
+    const date = dds[4]?.text?.trim() || null
+
+    // ID del AJAX para episodios
+    const ajaxUrl = html.querySelector('.caplist')?.attributes['data-ajax'] || null
+    let episodes: { num: number }[] = []
+
+    if (ajaxUrl) {
+      const ajaxRes = await fetch(ajaxUrl)
+      const ajaxData: any = await ajaxRes.json()
+      const animeSlug = id.replace('-sub-espanol', '')
+      episodes = (ajaxData.eps || []).map((ep: { num: number }) => ({
+        no: ep.num,
+        id: `${animeSlug}-episodio-${ep.num}`,
+      }))
+    }
+
     res.status(200).json({
-      banner: attr(html, '.herobg img', 'src'),
-      image: attr(html, '.chapterpic img', 'src'),
-      title:
-        html
-          .querySelector('.chapterdetails h1')
-          ?.text.replace(/Sub Español/gi, '')
-          .trim() || null,
-      titleAlt: html.querySelector('.alterno')?.text || null,
-      sinopsis: html.querySelector('.textComplete')?.text.replace('Ver menos', '') || null,
-      status: html.querySelector('#btninfo')?.text.trim() || null,
-      rating: html.querySelector('.chapterpic p')?.text || null,
-      genders: html.querySelectorAll('.breadcrumb .breadcrumb-item a').map(g => g.text) || null,
-      date: date || null,
-      episodes:
-        html.querySelectorAll('.row.jpage.row-cols-md-6 .col-item a').map(cap => {
-          const epId = cap.attributes['href'].replace(`${url}ver/`, '')
-          return {
-            image: attr(cap, '.animeimghv', 'data-src'),
-            no: parseInt(epId.split('-').pop() as string),
-            id: epId,
-          }
-        }) || null,
+      title,
+      image,
+      sinopsis,
+      status,
+      tipo,
+      date,
+      genders,
+      episodes,
     })
   } catch (error) {
     res.status(500).json({ error })
