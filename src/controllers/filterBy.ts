@@ -11,7 +11,10 @@ export const filterBy: Controller = async (req, res) => {
       pagina = '1',
     }: { [key: string]: any } = req.query
 
-    const html = await parser(api.filter({ categoria, fecha, genero, letra, pagina }))
+    const url = (genero === 'false' && letra === 'false' && categoria === 'false' && fecha === 'false')
+      ? api.all(pagina)
+      : api.filter({ categoria, fecha, genero, letra, pagina })
+    const html = await parser(url)
 
     // Extrae el total de páginas de la paginación
     const pageLinks = html.querySelectorAll('nav[aria-label="Paginación"] a')
