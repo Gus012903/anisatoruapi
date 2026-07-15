@@ -12,7 +12,7 @@ export const getAnime: Controller = async (req, res) => {
     const image    = html.querySelector('img.lazy')?.attributes['data-src'] || null
     const sinopsis = html.querySelector('p.text-white\\/75')?.text?.trim() || null
     const status   = html.querySelector('.animate-pulse')?.parentNode?.parentNode?.text?.trim() || null
-    const genders  = html.querySelectorAll('a[href*="/genero/"]').map((g: any) => g.text?.trim()).filter(Boolean)
+    const genders  = [...new Set(html.querySelectorAll('a[href*="/genero/"]').map((g: any) => g.text?.trim()).filter(Boolean))]
 
     // Detalles de la tabla
     const dds  = html.querySelectorAll('dd.text-white.text-right')
